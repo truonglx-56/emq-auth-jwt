@@ -1,0 +1,114 @@
+%%-*- mode: erlang -*-
+%% emq_auth_jwt config mapping
+
+{mapping, "auth.jwt.acl_nomatch", "emq_auth_jwt.acl_nomatch", [
+  {default, deny},
+  {datatype, {enum, [deny, allow]}}
+]}.
+
+{mapping, "auth.jwt.auth_algorithm", "emq_auth_jwt.auth_algorithm", [
+  {datatype, string}
+]}.
+
+{mapping, "auth.jwt.auth_pubkey", "emq_auth_jwt.auth_pubkey", [
+  {datatype, string}
+]}.
+
+{mapping, "auth.jwt.auth_privkey", "emq_auth_jwt.auth_privkey", [
+  {datatype, string}
+]}.
+
+{mapping,"auth.jwt.auth_authen","emq_auth_jwt.auth_authen",[
+  {datatype,string}
+]}.
+
+%% Mysql acl
+{mapping, "auth.jwt.mysql.server", "emq_auth_jwt.server", [
+  {default, {"127.0.0.1", 3306}},
+  {datatype, [integer, ip, string]}
+]}.
+
+{mapping, "auth.jwt.mysql.pool", "emq_auth_jwt.server", [
+  {default, 8},
+  {datatype, integer}
+]}.
+
+{mapping, "auth.jwt.mysql.username", "emq_auth_jwt.server", [
+  {default, ""},
+  {datatype, string}
+]}.
+
+{mapping, "auth.jwt.mysql.password", "emq_auth_jwt.server", [
+  {default, ""},
+  {datatype, string}
+]}.
+
+{mapping, "auth.jwt.mysql.database", "emq_auth_jwt.server", [
+  {default, "mqtt"},
+  {datatype, string}
+]}.
+
+{translation, "emq_auth_jwt.server", fun(Conf) ->
+  {MyHost, MyPort} =
+  case cuttlefish:conf_get("auth.mysql.server", Conf) of
+    {Ip, Port} -> {Ip, Port};
+    S          -> case string:tokens(S, ":") of
+                    [Domain]       -> {Domain, 3306};
+                    [Domain, Port] -> {Domain, list_to_integer(Port)}
+                  end
+    end,
+  Pool = cuttlefish:conf_get("auth.jwt.mysql.pool", Conf),
+  Username = cuttlefish:conf_get("auth.jwt.mysql.username", Conf),
+  Passwd = cuttlefish:conf_get("auth.jwt.mysql.password", Conf),
+  DB = cuttlefish:conf_get("auth.jwt.mysql.database", Conf),
+  [{pool_size, Pool},
+   {auto_reconnect, 1},
+   {host, MyHost},
+   {port, MyPort},
+   {user, Username},
+   {password, Passwd},
+   {database, DB},
+   {encoding, utf8},
+   {keep_alive, true}]
+end}.
+
+{mapping, "auth.jwt.mysql.acl_query", "emq_auth_jwt.acl_query", [
+  {datatype, string}
+]}.
+
+{mapping, "auth.jwt.iss.$id.link", "emq_auth_jwt.auth_iss", [
+  {datatype, string}
+]}.
+{translation, "emq_auth_jwt.auth_iss", fun(Conf) ->
+  Userlist = cuttlefish_variable:filter_by_prefix("auth.jwt.iss", Conf),
+  lists:foldl(
+    fun({["auth", "jwt","iss", Id, "link"], Username}, AccIn) ->
+        [{list_to_binary(cuttlefish:conf_get("auth.jwt.iss." ++ Id ++ ".link", Conf)),Id} | AccIn];
+       (_, AccIn) ->
+        AccIn
+  	end, [], Userlist)
+end}.
+
+%%-*- mode: erlang -*-
+%% Acl config mapping
+
+{mapping, "acl.mnesia.storage_type", "emq_auth_jwt.mnesia.storage_type", [
+  {default, ram},
+  {datatype, {enum, [disc, ram]}}
+]}.
+
+{mapping, "acl.mnesia.max_message_num", "emq_auth_jwt.mnesia.max_message_num", [
+  {default, 1000000},
+  {datatype, integer}
+]}.
+
+{mapping, "acl.mnesia.max_payload_size", "emq_auth_jwt.mnesia.max_payload_size", [
+  {default, "64KB"},
+  {datatype, bytesize}
+]}.
+
+{mapping, "acl.mnesia.expiry_interval", "emq_auth_jwt.mnesia.expiry_interval", [
+  {default, 0},
+  {datatype, [integer, {duration, ms}]}
+]}.
+
